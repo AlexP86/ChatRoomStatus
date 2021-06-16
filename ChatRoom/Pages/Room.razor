@@ -1,0 +1,86 @@
+﻿@page "/room/{RoomId:int}/{UserId:int}"
+@using ChatRoom.Core.Events
+@using ChatRoom.Core.Queries
+@using ChatRoom.Core.Queries.QueryArgs
+@using ChatRoom.Core.Services
+@inject IQueryService<ShowAllEventsArgs> QueryShowAllEvents
+@inject IQueryService<StatusByMinuteArgs> QueryStatusByMinute
+@inject IQueryService<StatusByHourArgs> QueryStatusByHour
+@inject IQueryService<AggregateByHourArgs> QueryAggregateByHour
+@inject IQueryService<AggregateByMinuteArgs> QueryAggregateByMinute
+@inject IQueryService<ShowAllAggregatedArgs> QueryShowAllAggregated
+@inject NavigationManager NavigationManager
+@inject IChatRoomEventProcessorService<LeaveChatRoomEvent> EnterChatRoomEventProcessorService
+
+<label for="aggregation">Aggregation level:</label>
+<select id="aggregation" @bind="AggregationLevel">
+    <option value="0">Select aggregation level</option>
+    <option value="1">All events</option>
+    <option value="2">Summary</option>
+</select>
+<label for="granularity">Granularity:</label>
+<select id="granularity" @bind="Granularity">
+    <option value="0">Select granularity</option>
+    <option value="1">By Minute</option>
+    <option value="2">By Hour</option>
+    <option value="3">All Time</option>
+</select>
+
+<button class="btn btn-primary" @onclick="GenerateReport">Generate Report</button>
+<button class="btn btn-primary" @onclick="LeaveRoom">Leave</button>
+<textarea rows="20" cols="100">@reportText</textarea>
+
+@code {
+
+    [Parameter]
+    public int RoomId { get; set; }
+
+    [Parameter]
+    public int UserId { get; set; }
+
+    private int AggregationLevel { get; set; }
+    private int Granularity { get; set; }
+
+    private string reportText = string.Empty;
+
+    private void GenerateReport()
+    {
+        switch((AggregationLevel, Granularity))
+        {
+            case (1, 1):
+                reportText = QueryStatusByMinute.Execute(new StatusByMinuteArgs { ChatRoomId = RoomId });
+                break;
+            case (1, 2):
+                reportText = QueryStatusByHour.Execute(new StatusByHourArgs { ChatRoomId = RoomId });
+                break;
+            case (1, 3):
+                reportText = QueryShowAllEvents.Execute(new ShowAllEventsArgs { ChatRoomId = RoomId });
+                break;
+            case (2, 1):
+                reportText = QueryAggregateByMinute.Execute(new AggregateByMinuteArgs { ChatRoomId = RoomId });
+                break;
+            case (2, 2):
+                reportText = QueryAggregateByHour.Execute(new AggregateByHourArgs { ChatRoomId = RoomId });
+                break;
+            case (2, 3):
+                reportText = QueryShowAllAggregated.Execute(new ShowAllAggregatedArgs { ChatRoomId = RoomId });
+                break;
+            default:
+                reportText = string.Empty;
+                break;
+        }
+    }
+
+    private void LeaveRoom()
+    {
+        EnterChatRoomEventProcessorService.Process(new LeaveChatRoomEvent
+        {
+            ChatRoomId = RoomId,
+            CreatedAt = DateTime.Now,
+            InitiatorParticipantId = UserId,
+            InitiatorParticipantName = "Peter"
+        });
+        NavigationManager.NavigateTo("/");
+    }
+
+}

@@ -1,0 +1,56 @@
+﻿@page "/"
+@using ChatRoom.Core.Events
+@using ChatRoom.Core.Services
+@using ChatRoom.Models
+@inject NavigationManager NavigationManager
+@inject IChatRoomEventProcessorService<EnterChatRoomEvent> EnterChatRoomEventProcessorService
+
+<EditForm Model="@chatRoomLobby" OnValidSubmit="EnterRoom">
+    <DataAnnotationsValidator/>
+    <label for="rooms">Select chat room:</label>
+    <InputSelect id="rooms" @bind-Value="chatRoomLobby.ChatRoomId">
+        <option value="">Select chat room</option>
+        <option value="20">Sports</option>
+        <option value="21">Science</option>
+    </InputSelect>
+
+    <label for="username">Select user:</label>
+    <InputSelect id="username" @bind-Value="chatRoomLobby.ParticipantId">
+        <option value="">Select user</option>
+        <option value="1">Peter</option>
+        <option value="2">Robert</option>
+        <option value="3">Mike</option>
+        <option value="4">Alice</option>
+        <option value="5">Lisa</option>
+    </InputSelect>
+
+    <button class="btn btn-primary" type="submit">Enter</button>
+</EditForm>
+
+@code {
+    private readonly ChatRoomLobbyModel chatRoomLobby = new ChatRoomLobbyModel();
+
+    // in the real world scenario this would be retrieved from back-end
+    // also APIs could be exposed, instead of injecting services directly 
+    private readonly IDictionary<string, string> users = new Dictionary<string, string>
+    {
+        {"1", "Peter"},
+        {"2", "Robert"},
+        {"3", "Mike"},
+        {"4", "Alice"},
+        {"5", "Lisa"}
+    };
+
+    private void EnterRoom()
+    {
+        EnterChatRoomEventProcessorService.Process(new EnterChatRoomEvent
+        {
+            ChatRoomId = Convert.ToInt32(chatRoomLobby.ChatRoomId),
+            CreatedAt = DateTime.Now,
+            InitiatorParticipantId = Convert.ToInt32(chatRoomLobby.ParticipantId),
+            InitiatorParticipantName = users[chatRoomLobby.ParticipantId]
+        });
+        NavigationManager.NavigateTo($"room/{chatRoomLobby.ChatRoomId}/{chatRoomLobby.ParticipantId}");
+    }
+
+}
